@@ -8,7 +8,7 @@ import java.util.Set;
 import java.util.Iterator;
 //import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.*;
   
 public class Server {
   public static void main(String args[]) throws Exception {
@@ -56,14 +56,10 @@ public class Server {
           if(buffer.hasArray()){
             String input = new String(buffer.array(), "UTF-8");//turn bytes into parsable string
             input = input.replace('\n', ' ');        //get rid of newlines for better processing
-            String output = processReq(input, userList);            //process string
-            //System.out.print(output);
-            String tokens[] = output.split(" ");
-            userMap.put(clientSockCh, tokens[tokens.length-1]);     //put the socket channel in the map with the associated name as the key
+            String output = processReq(input, userList, clientSockCh, userMap);            //process string
 
             output = output + "\n";
             byte b[] = output.getBytes();
-            buffer = ByteBuffer.allocate(b.length);         //prepare buffer to send to client
             buffer = ByteBuffer.wrap(b);
           }
 
@@ -80,9 +76,9 @@ public class Server {
     }
   }
   
-  public static String processReq(String request, ArrayList<String> userList){
+  public static String processReq(String request, ArrayList<String> userList, SocketChannel clientSockCh, HashMap<SocketChannel, String> userMap){
     String result = "";
-    if(request.contains("REG")){
+    if(request.contains("REG") && !userMap.containsKey(clientSockCh)){//registering
       request = request.substring(4, 37);
       String []token = request.split("\0");
       String []tokens = token[0].split(" ");
@@ -94,26 +90,33 @@ public class Server {
           result = "ERR 0";
         else if(username.length() > 32)
           result = "ERR 1";
+        else if(userMap.containsKey(clientSockCh))
+          result = "Client already has a username associated with this connection";
         else{
           userList.add(username);
+          userMap.put(clientSockCh, username); //put the socket channel in the map with the associated name as the key
           result = "ACK " + userList.size();
           for(int i = 0; i < userList.size(); i++)
             result = result + " " + userList.get(i);
         }
       } 
     }
-    else if(request.contains("MESG")){
-      result = "MESG";
+    else if(request.contains("REG") && userMap.containsKey(clientSockCh))//user tries registering but has already registered
+      return "Channel has already been registerd with username " + userMap.get(clientSockCh);
+    else if((request.contains("MESG") || request.contains("PMSG") || request.contains("EXIT")) && userMap.containsKey(clientSockCh)){//other valid commands
+      if(request.contains("MESG")){
+        result = "MESG";
+      }
+      else if(request.contains("PMSG")){
+        result = "PMSG";
+      }
+      else if(request.contains("EXIT")){
+        result = "EXIT";
+      }
     }
-    else if(request.contains("PMSG")){
-      result = "PMSG";
-    }
-    else if(request.contains("EXIT")){
-      result = "EXIT";
-    }
-    else{
+    else{//any other command is not supported
       result = "Please enter a valid command";
-    }
+      }
     return result;
   }
 }  
