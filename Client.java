@@ -1,7 +1,9 @@
 import java.io.*; 
 import java.net.*; 
-  
-public class Client { 
+import java.lang.Thread;
+
+public class Client{
+
   public static void main(String args[]) throws Exception 
   {
     int servPort = 12346;
@@ -19,20 +21,39 @@ public class Client {
     Socket clientSocket = new Socket(hostName,servPort); 
     DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
     BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-
+    MyThread thread = new MyThread(inFromServer);
+    thread.start();
     String sentence;
-    String modifiedSentence;
+    //String modifiedSentence;
     while ((sentence = inFromUser.readLine()) != null) {
       outToServer.writeBytes(sentence + '\n');
-      if ((modifiedSentence = inFromServer.readLine()) != null) {
+      /*if ((modifiedSentence = inFromServer.readLine()) != null) {
         System.out.println("FROM SERVER: " + modifiedSentence);
       }
       else {
         System.out.println("Server hung up\n");
         clientSocket.close();
         System.exit(0);
-      }
+      }*/
     }
+    thread.join();
     clientSocket.close(); 
   } 
 } 
+class MyThread extends Thread{
+  BufferedReader client;
+  MyThread(BufferedReader c){
+    client = c;
+  }
+  public void run(){
+    String fromServer;
+    try{
+      while((fromServer = client.readLine()) != null)
+        System.out.println(fromServer);
+    }
+    catch(Exception e){
+      System.out.println("Server hung up");
+      System.exit(0);
+    }
+  }
+}

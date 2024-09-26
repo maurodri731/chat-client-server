@@ -48,14 +48,22 @@ public class Server {
           Socket clientInfo = clientSockCh.socket();
           System.out.print("Data from " + clientInfo.getInetAddress().getHostName() + " Port " + clientInfo.getPort() + "\n");
           int BUFFER_SIZE = 1024;
-          int bytesRead;
+          int bytesRead = 0;
           ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
+          String input = "";
 
-          bytesRead = clientSockCh.read(buffer);
+          while(true){
+            bytesRead += clientSockCh.read(buffer);
+            input = new String(buffer.array());
+            if(input.contains("\n"))
+              break;
+          }
+            
 
           if(buffer.hasArray()){
-            String input = new String(buffer.array(), "UTF-8");//turn bytes into parsable string
+            //String input = new String(buffer.array(), "UTF-8");//turn bytes into parsable string
             input = input.replace('\n', ' ');        //get rid of newlines for better processing
+            //System.out.println("User input: " + input + " " + bytesRead);
             String output = processReq(input, userList, clientSockCh, userMap);            //process string
 
             output = output + "\n";
@@ -76,7 +84,7 @@ public class Server {
     }
   }
   
-  public static String processReq(String request, ArrayList<String> userList, SocketChannel clientSockCh, HashMap<SocketChannel, String> userMap){
+  public static String processReq(String request, ArrayList<String> userList, SocketChannel clientSockCh, HashMap<SocketChannel, String> userMap) throws Exception{
     String result = "";
     if(request.contains("REG") && !userMap.containsKey(clientSockCh)){//registering
       request = request.substring(4, 37);
@@ -105,7 +113,22 @@ public class Server {
       return "Channel has already been registerd with username " + userMap.get(clientSockCh);
     else if((request.contains("MESG") || request.contains("PMSG") || request.contains("EXIT")) && userMap.containsKey(clientSockCh)){//other valid commands
       if(request.contains("MESG")){
-        result = "MESG";
+        String message = userMap.get(clientSockCh) + ": " + request.substring(5) + "\n";
+
+        for(Map.Entry<SocketChannel, String> entry : userMap.entrySet()){
+          if(entry.getKey() != clientSockCh){
+            try{
+              byte b[] = message.getBytes();
+              ByteBuffer buffer = ByteBuffer.allocate(1024);
+              buffer = ByteBuffer.wrap(b);
+              entry.getKey().write(buffer);
+            }
+            catch(Exception e){
+              e.getStackTrace();
+            }
+          }
+        }
+        result = "Message sent to everyone";
       }
       else if(request.contains("PMSG")){
         result = "PMSG";
@@ -116,7 +139,7 @@ public class Server {
     }
     else{//any other command is not supported
       result = "Please enter a valid command";
-      }
+    }
     return result;
   }
 }  
