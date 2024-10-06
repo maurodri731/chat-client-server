@@ -131,7 +131,26 @@ public class Server {
         result = "Message sent to everyone";
       }
       else if(request.contains("PMSG")){
-        result = "PMSG";
+        String[] temp = request.split(" ");
+        String receiver = temp[1];
+        String message = "MSG " + userMap.get(clientSockCh) + request.substring(request.indexOf(receiver)+receiver.length()) + "\n";
+        for(Map.Entry<SocketChannel, String> entry : userMap.entrySet()){
+          System.out.println(entry.getValue());
+          if(entry.getValue().equals(receiver)){
+            try{
+              byte b[] = message.getBytes();
+              ByteBuffer buffer = ByteBuffer.allocate(1024);
+              buffer = ByteBuffer.wrap(b);
+              entry.getKey().write(buffer);
+              return "Message sent to " + receiver;
+            }
+            catch(Exception e){
+              e.getStackTrace();
+            }
+          }
+        }
+
+        result = "ERR 3";
       }
       else if(request.contains("EXIT")){
         result = "EXIT";
