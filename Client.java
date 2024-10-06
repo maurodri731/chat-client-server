@@ -25,7 +25,7 @@ public class Client{
     thread.start();
     String sentence;
     //String modifiedSentence;
-    while ((sentence = inFromUser.readLine()) != null) {
+    while ((clientSocket.isConnected()) && (sentence = inFromUser.readLine()) != null) {
       outToServer.writeBytes(sentence + '\n');
       /*if ((modifiedSentence = inFromServer.readLine()) != null) {
         System.out.println("FROM SERVER: " + modifiedSentence);
@@ -48,8 +48,11 @@ class MyThread extends Thread{
   public void run(){
     String fromServer;
     try{
-      while((fromServer = client.readLine()) != null)
+      while((fromServer = client.readLine()) != null){
         System.out.println(fromServer);
+        if(fromServer.equals("MSG SERVER> Goodbye!!!"))
+          System.exit(0);
+      }
     }
     catch(Exception e){
       System.out.println("Server hung up");

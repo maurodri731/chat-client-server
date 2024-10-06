@@ -51,12 +51,39 @@ public class Server {
           int bytesRead = 0;
           ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
           String input = "";
+          String output = "";
 
           while(true){
-            bytesRead += clientSockCh.read(buffer);
-            input = new String(buffer.array());
-            if(input.contains("\n"))
+            try{
+              bytesRead += clientSockCh.read(buffer);
+              input = new String(buffer.array());
+              if(input.contains("\n"))
+                break;
+            }
+            catch(SocketException e){
+              key.cancel();
+              if(userMap.get(clientSockCh) != null){
+                String username = userMap.get(clientSockCh);
+                String message = "MESG SERVER> " + username + " has quit the chat\n";
+                for(Map.Entry<SocketChannel, String> entry : userMap.entrySet()){
+                  if(entry.getKey() != clientSockCh){
+                    try{
+                      byte b[] = message.getBytes();
+                      ByteBuffer buffer2 = ByteBuffer.allocate(1024);
+                      buffer2 = ByteBuffer.wrap(b);
+                      entry.getKey().write(buffer2);
+                    }
+                    catch(Exception e2){
+                      e2.getStackTrace();
+                    }
+                  }
+                } 
+                userMap.remove(clientSockCh);
+                userList.remove(username);
+              }
+              clientSockCh.close();
               break;
+            }
           }
             
 
@@ -64,7 +91,7 @@ public class Server {
             //String input = new String(buffer.array(), "UTF-8");//turn bytes into parsable string
             input = input.replace('\n', ' ');        //get rid of newlines for better processing
             //System.out.println("User input: " + input + " " + bytesRead);
-            String output = processReq(input, userList, clientSockCh, userMap);            //process string
+            output = processReq(input, userList, clientSockCh, userMap);            //process string
 
             output = output + "\n";
             byte b[] = output.getBytes();
@@ -77,7 +104,8 @@ public class Server {
           }
           else {
             //buffer.flip();                                      // switch from writing to reading
-            clientSockCh.write(buffer);                        // read contents of buffer and write to client socket channel
+            if(clientSockCh.isOpen())
+              clientSockCh.write(buffer);                        // read contents of buffer and write to client socket channel
           }
         }
       } 
@@ -91,21 +119,35 @@ public class Server {
       String []token = request.split("\0");
       String []tokens = token[0].split(" ");
       if(tokens.length > 1)
-        result = "ERR 2";
+        result = "ERR username contains spaces, try REG again";
       else{
         String username = tokens[0];
         if(userList.contains(username))
-          result = "ERR 0";
+          result = "ERR username is taken, try REG again";
         else if(username.length() > 32)
-          result = "ERR 1";
+          result = "ERR usernames is greater than 32 characters, try REG again";
         else if(userMap.containsKey(clientSockCh))
-          result = "Client already has a username associated with this connection";
+          result = "Client already has a username associated with this connection, try another command";
         else{
           userList.add(username);
           userMap.put(clientSockCh, username); //put the socket channel in the map with the associated name as the key
           result = "ACK " + userList.size();
           for(int i = 0; i < userList.size(); i++)
             result = result + " " + userList.get(i);
+          String message = "MSG SERVER> user " + username + " just joined\n";
+          for(Map.Entry<SocketChannel, String> entry : userMap.entrySet()){
+            if(entry.getKey() != clientSockCh){
+              try{
+                byte b[] = message.getBytes();
+                ByteBuffer buffer = ByteBuffer.allocate(1024);
+                buffer = ByteBuffer.wrap(b);
+                entry.getKey().write(buffer);
+              }
+              catch(Exception e){
+                e.getStackTrace();
+              }
+            }
+          }  
         }
       } 
     }
@@ -113,7 +155,7 @@ public class Server {
       return "Channel has already been registerd with username " + userMap.get(clientSockCh);
     else if((request.contains("MESG") || request.contains("PMSG") || request.contains("EXIT")) && userMap.containsKey(clientSockCh)){//other valid commands
       if(request.contains("MESG")){
-        String message = userMap.get(clientSockCh) + ": " + request.substring(5) + "\n";
+        String message = "MSG " + userMap.get(clientSockCh) + "> " + request.substring(5) + "\n";
 
         for(Map.Entry<SocketChannel, String> entry : userMap.entrySet()){
           if(entry.getKey() != clientSockCh){
@@ -133,9 +175,8 @@ public class Server {
       else if(request.contains("PMSG")){
         String[] temp = request.split(" ");
         String receiver = temp[1];
-        String message = "MSG " + userMap.get(clientSockCh) + request.substring(request.indexOf(receiver)+receiver.length()) + "\n";
+        String message = "MSG " + userMap.get(clientSockCh) + "> " + request.substring(request.indexOf(receiver)+receiver.length()) + "\n";
         for(Map.Entry<SocketChannel, String> entry : userMap.entrySet()){
-          System.out.println(entry.getValue());
           if(entry.getValue().equals(receiver)){
             try{
               byte b[] = message.getBytes();
@@ -149,11 +190,38 @@ public class Server {
             }
           }
         }
-
-        result = "ERR 3";
+        result = "ERR receiving user is not registered in the chat";
       }
       else if(request.contains("EXIT")){
-        result = "EXIT";
+        String username = userMap.get(clientSockCh);
+        userList.remove(username);
+        userMap.remove(clientSockCh);
+        String userMessage = "MSG SERVER> Goodbye!!!\n";
+        try{
+          byte b[] = userMessage.getBytes();
+          ByteBuffer buffer = ByteBuffer.allocate(1024);
+          buffer = ByteBuffer.wrap(b);
+          clientSockCh.write(buffer);
+        }
+        catch(Exception e){
+          e.getStackTrace();
+        }
+        String message = "MSG SERVER> " + username + " has left the chat\n";
+        for(Map.Entry<SocketChannel, String> entry : userMap.entrySet()){
+          if(entry.getKey() != clientSockCh){
+            try{
+              byte b[] = message.getBytes();
+              ByteBuffer buffer = ByteBuffer.allocate(1024);
+              buffer = ByteBuffer.wrap(b);
+              entry.getKey().write(buffer);
+            }
+            catch(Exception e){
+              e.getStackTrace();
+            }
+          }
+        }
+        clientSockCh.close();
+        result = null;
       }
     }
     else{//any other command is not supported
