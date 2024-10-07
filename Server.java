@@ -46,7 +46,7 @@ public class Server {
         if (key.isReadable()) {                                    // socket has data ready to be read
           SocketChannel clientSockCh = (SocketChannel) key.channel();
           Socket clientInfo = clientSockCh.socket();
-          System.out.print("Data from " + clientInfo.getInetAddress().getHostName() + " Port " + clientInfo.getPort() + "\n");
+          System.out.print("Data from " + clientInfo.getInetAddress().getHostName() + " Port " + clientInfo.getPort() +  " " + userMap.get(clientSockCh) + "\n");
           int BUFFER_SIZE = 1024;
           int bytesRead = 0;
           ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
@@ -225,7 +225,10 @@ public class Server {
       }
     }
     else{//any other command is not supported
-      result = "Please enter a valid command";
+      if(!userMap.containsKey(clientSockCh))
+        result = "Please register for the chat using REG before entering any command";
+      else
+        result = "Please enter a valid command";
     }
     return result;
   }
