@@ -53,7 +53,7 @@ public class Server {
           String input = "";
           String output = "";
 
-          while(true){
+          /*while(true){
             try{
               bytesRead += clientSockCh.read(buffer);
               input = new String(buffer.array());
@@ -84,6 +84,36 @@ public class Server {
               clientSockCh.close();
               break;
             }
+          }*/
+          while(true){
+              bytesRead += clientSockCh.read(buffer);
+              input = new String(buffer.array());
+              if(bytesRead < 0){
+                key.cancel();
+                if(userMap.get(clientSockCh) != null){
+                  String username = userMap.get(clientSockCh);
+                  String message = "MESG SERVER> " + username + " has quit the chat\n";
+                  for(Map.Entry<SocketChannel, String> entry : userMap.entrySet()){
+                    if(entry.getKey() != clientSockCh){
+                      try{
+                        byte b[] = message.getBytes();
+                        ByteBuffer buffer2 = ByteBuffer.allocate(1024);
+                        buffer2 = ByteBuffer.wrap(b);
+                        entry.getKey().write(buffer2);
+                      }
+                      catch(Exception e2){
+                        e2.getStackTrace();
+                      }
+                    }
+                  }  
+                  userMap.remove(clientSockCh);
+                  userList.remove(username);
+                }
+                clientSockCh.close();
+                break;
+              }
+            if(input.contains("\n"))
+              break;
           }
             
 
