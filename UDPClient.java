@@ -30,22 +30,30 @@ class UDPClient {
     String sentence = null;
     int sequence = 0;
     while ((sentence = inFromUser.readLine()) != null) {
+
         String toServer = "DATA " + sentence + " " + sequence;
         sendData = toServer.getBytes();         
         DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, servPort); 
         clientSocket.send(sendPacket);
         DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-        while(true){ 
-            try{ 
+        
+        while(true){//this loop doesn't break unless the correct ACK has arrived 
+            try{//receives the ack and checks if it is correct 
                 clientSocket.receive(receivePacket);
+                String serverResponse = new String(receivePacket.getData());
+                String tokens[] = serverResponse.split(" ");
+                String sepSeq[] = tokens[1].split("\0");
+                if(Integer.valueOf(sepSeq[0]) != sequence){//if the ack is incorrect, go through the while loop again, this also restarts the timer automatically
+                    continue;
+                }
                 break;
-            }
+            }//if the socket timesout, resend the packet and wait for a response once more
             catch(SocketTimeoutException e){
                 System.out.println("Timeout reached, resending last packet");
                 clientSocket.send(sendPacket);
             }
         }
-        sequence++;
+        sequence++;//the sequence number gets incremented only once the ACK has been verified
         String serverResponse = new String(receivePacket.getData()); 
         System.out.println("FROM SERVER:" + serverResponse);
     }
