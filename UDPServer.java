@@ -4,7 +4,15 @@ import java.net.*;
 class UDPServer { 
   public static void main(String args[]) throws Exception 
   { 
-    DatagramSocket serverSocket = new DatagramSocket(12346);
+    int servPort = 0;
+    try{
+      servPort = Integer.valueOf(args[0]);
+    }
+    catch(ArrayIndexOutOfBoundsException e){
+      System.out.println("Usage <port$>");
+      System.exit(-1);
+    }
+    DatagramSocket serverSocket = new DatagramSocket(servPort);
     int seqNum = 0; 
     while(true) 
     { 
@@ -16,19 +24,18 @@ class UDPServer {
       String response;
       String sentence = new String(receivePacket.getData());//turn it into a string
       String tokens[] = sentence.split(" ");//split DATA, the character, and the sequence number from each other
-      String []sepSeq = tokens[2].split("\0");//separate the sequence number from all of the nulls at the end of the string
 
       InetAddress IPAddress = receivePacket.getAddress();//prepare for the sending of the Datagram back to the user 
       int port = receivePacket.getPort();
 
-      if(sentence.contains("DATA") && seqNum == Integer.valueOf(sepSeq[0])){ //check if client sent a DATA message with the expected sequence number
+      if(sentence.contains("DATA") && seqNum == Integer.valueOf(tokens[1])){ //check if client sent a DATA message with the expected sequence number
         System.out.println("FROM CLIENT:" + sentence);//output the data if it is correct
-        sentence = "ACK " + (seqNum+1);//prepare the ACK 
+        sentence = "ACK " + seqNum + "\n";//prepare the ACK 
         seqNum++;
       }
       else{
         int temp = seqNum-1;
-        sentence = "ACK " + temp;//duplicate ACK
+        sentence = "ACK " + temp + "\n";//duplicate ACK
       }
       //sending data, the processing was already done on the if-else above
       response = sentence; 

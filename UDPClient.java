@@ -5,13 +5,14 @@ import java.lang.*;
 class UDPClient { 
   public static void main(String args[]) throws Exception 
   {
-    int servPort = 12346;
+    int servPort = 0;
     String hostName = null;
     
     try {
         hostName = args[0];
+        servPort = Integer.valueOf(args[1]);
     } catch (ArrayIndexOutOfBoundsException e) {
-        System.out.println("Need argument: remoteHost");
+        System.out.println("Usage: client <server-name> <port#>");
         System.exit(-1);
     }
       
@@ -30,8 +31,8 @@ class UDPClient {
     String sentence = null;
     int sequence = 0;
     while ((sentence = inFromUser.readLine()) != null) {
-
-        String toServer = "DATA " + sentence + " " + sequence;
+        
+        String toServer = "DATA " + sequence + " " + sentence + "\n";
         sendData = toServer.getBytes();         
         DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, servPort); 
         clientSocket.send(sendPacket);
@@ -43,13 +44,14 @@ class UDPClient {
                 String serverResponse = new String(receivePacket.getData());
                 String tokens[] = serverResponse.split(" ");
                 String sepSeq[] = tokens[1].split("\0");
+				sepSeq[0] = sepSeq[0].substring(0, sepSeq[0].indexOf('\n'));
                 if(Integer.valueOf(sepSeq[0]) != sequence){//if the ack is incorrect, go through the while loop again, this also restarts the timer automatically
                     continue;
                 }
                 break;
             }//if the socket timesout, resend the packet and wait for a response once more
             catch(SocketTimeoutException e){
-                System.out.println("Timeout reached, resending last packet");
+                System.out.println("Timeout reached, resending last packet: DATA " + sentence);
                 clientSocket.send(sendPacket);
             }
         }
