@@ -9,7 +9,7 @@ class UDPClient {
     String hostName = null;
     int maxSeq = 0;
     
-    try {//port number is needed in the command line arguments
+    try {//try catch for command line arguments
         hostName = args[0];
         servPort = Integer.valueOf(args[1]);
         maxSeq = Integer.valueOf(args[2]);
@@ -18,7 +18,7 @@ class UDPClient {
         System.exit(-1);
     }
       
-    BufferedReader inFromUser = new BufferedReader(new InputStreamReader(System.in)); 
+    BufferedReader inFromUser = new BufferedReader(new InputStreamReader(System.in));//used to read in the input from the user 
     DatagramSocket clientSocket = new DatagramSocket();//create the socket for the client
     try{//set the timeout for the socket, this only works after each write to server
         clientSocket.setSoTimeout(5000);
@@ -49,14 +49,14 @@ class UDPClient {
                     String serverResponse = new String(receivePacket.getData());//turn it into a string
                     String tokens[] = serverResponse.split(" ");//pre-process the data
                     String sepSeq[] = tokens[1].split("\0");
-				    sepSeq[0] = sepSeq[0].substring(0, sepSeq[0].indexOf('\n'));
+				    sepSeq[0] = sepSeq[0].substring(0, sepSeq[0].indexOf('\n'));//get rid of the newline char to process the integer correcetly
                     if(Integer.valueOf(sepSeq[0]) != sequence){
                         continue;//if the ack is incorrect, go through the while loop again, this also restarts the timer automatically
                     }
                     break;//if the ack is correct, break the loop and process the response for the client to see in their console
                 }//if the socket timesout, resend the packet and wait for a response once more
                 catch(SocketTimeoutException e){
-                    System.out.println("Timeout reached, resending last packet: DATA " + sentence);
+                    System.out.println("Timeout reached, resending last packet: DATA " + c);
                     clientSocket.send(sendPacket);
                 }
             }

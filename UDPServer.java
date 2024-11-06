@@ -6,6 +6,7 @@ class UDPServer {
   { 
     int servPort = 0;
     int maxSeq = 0;
+	int lastSeq = 0;
     try{
       servPort = Integer.valueOf(args[0]);
       maxSeq = Integer.valueOf(args[1]);
@@ -32,15 +33,18 @@ class UDPServer {
 
       if(sentence.contains("DATA") && seqNum == Integer.valueOf(tokens[1])){ //check if client sent a DATA message with the expected sequence number
         System.out.println("FROM CLIENT:" + sentence);//output the data if it is correct
-        response = "ACK " + seqNum + "\n";//prepare the ACK
-        if(seqNum == maxSeq-1)
+        response = "ACK " + seqNum + "\n";//prepare the ACK for when the correct seq number is received
+        if(seqNum == maxSeq-1){//check if the maxSeq has been reached, to parallel the function of testclient
+		      lastSeq = seqNum;
           seqNum = 0;
-        else
-          seqNum++;
+		    }
+        else{
+		      lastSeq = seqNum;
+          seqNum++;	
+		    }
       }
-      else{
-        int temp = seqNum-1;
-        response = "ACK " + temp + "\n";//duplicate ACK
+      else{//a duplicate ACK gets sent when the client asks for the wrong sequence number
+        response = "ACK " + lastSeq + "\n";//duplicate ACK
       }
       //sending data, the processing was already done on the if-else above
       sendData = response.getBytes();
