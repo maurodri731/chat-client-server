@@ -45,6 +45,7 @@ class UDPServer {
       }
       else{//a duplicate ACK gets sent when the client asks for the wrong sequence number
         response = "ACK " + lastSeq + "\n";//duplicate ACK
+        System.out.println("Duplicate ACK " + lastSeq + " sent!");
       }
       //sending data, the processing was already done on the if-else above
       sendData = response.getBytes();
